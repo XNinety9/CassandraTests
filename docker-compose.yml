@@ -1,0 +1,43 @@
+version: "3.8"
+
+services:
+  # ── Seed (first node) ──────────────────────────────────────────────
+  cassandra-seed:
+    image: docker.io/library/cassandra:5.0
+    container_name: cassandra-seed
+    # Podman/Docker will use the service name (cassandra-seed) as the
+    # hostname that the other container resolves via /etc/hosts.
+    environment:
+      CASSANDRA_CLUSTER_NAME: test-cluster
+      CASSANDRA_SEEDS: cassandra-seed
+      CASSANDRA_LISTEN_ADDRESS: cassandra-seed
+      CASSANDRA_BROADCAST_ADDRESS: cassandra-seed
+      # Trim JVM heap for a laptop; delete the next two lines if RAM is no issue
+      MAX_HEAP_SIZE: 512M
+      HEAP_NEWSIZE: 100M
+    ports:
+      - "9042:9042"            # expose CQL to your host
+    volumes:
+      - seed_data:/var/lib/cassandra
+
+  # ── Peer (second node) ─────────────────────────────────────────────
+  cassandra-node:
+    image: docker.io/library/cassandra:5.0
+    container_name: cassandra-node
+    environment:
+      CASSANDRA_CLUSTER_NAME: test-cluster
+      CASSANDRA_SEEDS: cassandra-seed
+      CASSANDRA_LISTEN_ADDRESS: cassandra-node
+      CASSANDRA_BROADCAST_ADDRESS: cassandra-node
+      MAX_HEAP_SIZE: 512M
+      HEAP_NEWSIZE: 100M
+    ports:
+      - "9043:9042"
+    depends_on:
+      - cassandra-seed         # start only after the seed is running
+    volumes:
+      - node_data:/var/lib/cassandra
+
+volumes:
+  seed_data:
+  node_data:
