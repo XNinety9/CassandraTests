@@ -1,4 +1,4 @@
-# Two‑Node Cassandra Test Cluster (Podman)
+# Cassandra Test Cluster (Podman)
 
 This README walks you through spinning up a **full-fledges Apache Cassandra 5.0.4 cluster** with **Podman** (or Docker), creating an **isolated Python virtual‑environment**, and running two flavours of **replication‑sanity tests**:
 
