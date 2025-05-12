@@ -1,43 +1,113 @@
 version: "3.8"
 
+# Ports:
+# 7199 JMX monitoring port
+# 1024 - 65355 Random port required by JMX. Starting with Java 7u4 a specific port can be specified using the com.sun.management.jmxremote.rmi.port property.
+# 7000 Inter-node cluster
+# 7001 SSL inter-node cluster
+# 9042 CQL Native Transport Port
+# 9160 Thrift
+
+
 services:
-  # ── Seed (first node) ──────────────────────────────────────────────
   cassandra-seed:
-    image: docker.io/library/cassandra:5.0
+    image: docker.io/library/cassandra:5.0.4
     container_name: cassandra-seed
-    # Podman/Docker will use the service name (cassandra-seed) as the
-    # hostname that the other container resolves via /etc/hosts.
     environment:
       CASSANDRA_CLUSTER_NAME: test-cluster
       CASSANDRA_SEEDS: cassandra-seed
       CASSANDRA_LISTEN_ADDRESS: cassandra-seed
       CASSANDRA_BROADCAST_ADDRESS: cassandra-seed
       # Trim JVM heap for a laptop; delete the next two lines if RAM is no issue
-      MAX_HEAP_SIZE: 512M
+      MAX_HEAP_SIZE: 512m
       HEAP_NEWSIZE: 100M
     ports:
       - "9042:9042"            # expose CQL to your host
     volumes:
       - seed_data:/var/lib/cassandra
+    # The healtcheck is mandatory in order to avoid nodes tokens collision when the cluster starts.
+    # Here it's used to start nodes one after another
+    healthcheck:
+      test: ["CMD-SHELL", "nodetool status"]
+      interval: 1m      # Time between each healthcheck
+      start_period: 1m  # Time before first check
+      timeout: 10s      # Healthcheck command timeout
+      retries: 5        # Number of retries before the service is declares "unhealthy"
 
-  # ── Peer (second node) ─────────────────────────────────────────────
-  cassandra-node:
-    image: docker.io/library/cassandra:5.0
-    container_name: cassandra-node
+  cassandra-node-1:
+    image: docker.io/library/cassandra:5.0.4
+    container_name: cassandra-node-1
     environment:
       CASSANDRA_CLUSTER_NAME: test-cluster
       CASSANDRA_SEEDS: cassandra-seed
-      CASSANDRA_LISTEN_ADDRESS: cassandra-node
-      CASSANDRA_BROADCAST_ADDRESS: cassandra-node
-      MAX_HEAP_SIZE: 512M
+      CASSANDRA_LISTEN_ADDRESS: cassandra-node-1
+      CASSANDRA_BROADCAST_ADDRESS: cassandra-node-1
+      MAX_HEAP_SIZE: 512m
       HEAP_NEWSIZE: 100M
     ports:
       - "9043:9042"
     depends_on:
-      - cassandra-seed         # start only after the seed is running
+      cassandra-seed:
+        condition: service_healthy
     volumes:
-      - node_data:/var/lib/cassandra
+      - node1_data:/var/lib/cassandra
+    healthcheck:
+      test: ["CMD-SHELL", "nodetool status"]
+      interval: 1m      # Time between each healthcheck
+      start_period: 1m  # Time before first check
+      timeout: 10s      # Healthcheck command timeout
+      retries: 5        # Number of retries before the service is declares "unhealthy"
+
+  cassandra-node-2:
+    image: docker.io/library/cassandra:5.0.4
+    container_name: cassandra-node-2
+    environment:
+      CASSANDRA_CLUSTER_NAME: test-cluster
+      CASSANDRA_SEEDS: cassandra-seed
+      CASSANDRA_LISTEN_ADDRESS: cassandra-node-2
+      CASSANDRA_BROADCAST_ADDRESS: cassandra-node-2
+      MAX_HEAP_SIZE: 512m
+      HEAP_NEWSIZE: 100M
+    ports:
+      - "9044:9042"
+    depends_on:
+      cassandra-node-1:
+        condition: service_healthy
+    volumes:
+      - node2_data:/var/lib/cassandra
+    healthcheck:
+      test: ["CMD-SHELL", "nodetool status"]
+      interval: 1m      # Time between each healthcheck
+      start_period: 1m  # Time before first check
+      timeout: 10s      # Healthcheck command timeout
+      retries: 5        # Number of retries before the service is declares "unhealthy"
+
+  cassandra-node-3:
+    image: docker.io/library/cassandra:5.0.4
+    container_name: cassandra-node-3
+    environment:
+      CASSANDRA_CLUSTER_NAME: test-cluster
+      CASSANDRA_SEEDS: cassandra-seed
+      CASSANDRA_LISTEN_ADDRESS: cassandra-node-3
+      CASSANDRA_BROADCAST_ADDRESS: cassandra-node-3
+      MAX_HEAP_SIZE: 512m
+      HEAP_NEWSIZE: 100M
+    ports:
+      - "9045:9042"
+    depends_on:
+      cassandra-node-2:
+        condition: service_healthy
+    volumes:
+      - node3_data:/var/lib/cassandra
+    healthcheck:
+      test: ["CMD-SHELL", "nodetool status"]
+      interval: 1m      # Time between each healthcheck
+      start_period: 1m  # Time before first check
+      timeout: 10s      # Healthcheck command timeout
+      retries: 5        # Number of retries before the service is declares "unhealthy"
 
 volumes:
   seed_data:
-  node_data:
+  node1_data:
+  node2_data:
+  node3_data:
