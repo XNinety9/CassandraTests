@@ -1,89 +1,65 @@
 # File: main.py
 """
-Entry point for running all replication tests against a Cassandra cluster.
+Simple driver to run all Cassandra replication tests sequentially,
+with clear sections, emojis, and colors.
 """
-import argparse
 import sys
-import os
-from typing import Callable, Dict, List, Tuple
+from colorama import init as colorama_init
+from colors import SUCCESS, FAIL, INFO, WARN, RESET
 from cassandra_utils.discovery import discover_nodes
 from cassandra_utils.logger import log
 from tests.sql_test import sql_test
 from tests.nosql_test import nosql_test
 from tests.disconnect_reconnect_test import disconnect_reconnect_test
+from tests.network_limit_test import network_limit_test
 
-
-def run_tests(
-    tests: Dict[str, Callable[[List[Tuple[str, int]]], bool]],
-    nodes: List[Tuple[str, int]],
-    skip: List[str]
-) -> bool:
-    """
-    Execute a series of replication tests by name.
-
-    :param tests: Mapping of test names to functions.
-    :param nodes: List of Cassandra node contact points.
-    :param skip: List of test names to skip.
-    :return: True if all executed tests passed.
-    """
-    overall_success = True
-    for name, func in tests.items():
-        if name in skip:
-            log(f"[MAIN] Skipping test: {name}")
-            continue
-        log(f"[MAIN] Running test: {name}")
-        success = func(nodes)
-        log(f"[MAIN] Test {name} {'PASSED' if success else 'FAILED'}")
-        overall_success &= success
-    return overall_success
-
+# Initialize colorama
+colorama_init(autoreset=True)
 
 def main() -> None:
-    """
-    Parse arguments, discover nodes, and run replication tests.
-
-    Supports skipping specific tests via flags.
-    """
-    parser = argparse.ArgumentParser(
-        description="Run Cassandra replication consistency tests."
-    )
-    parser.add_argument(
-        "--skip", "-s",
-        action="append",
-        choices=["sql", "nosql", "disconnect"],
-        help="Name of test to skip (can be repeated)."
-    )
-    args = parser.parse_args()
-
+    # Discover Cassandra nodes
     nodes = discover_nodes()
     if len(nodes) < 2:
-        sys.exit("✘ Need at least two Cassandra nodes running")
+        log("Need at least two Cassandra nodes running", FAIL)
+        sys.exit(1)
 
-    log("[MAIN] Nodes under test: " + ", ".join(f"{h}:{p}" for h, p in nodes))
+    log(f"Nodes under test: {', '.join(f'{h}:{p}' for h, p in nodes)}", INFO)
 
-    test_functions: Dict[str, Callable[[List[Tuple[str, int]]], bool]] = {
-        "sql": sql_test,
-        "nosql": nosql_test,
-        "disconnect": disconnect_reconnect_test,
-    }
+    # --- SQL Replication Test ---
+    log("-" * 80, WARN)
+    log("🛠️  Starting SQL Replication Test", INFO)
+    sql_ok = sql_test(nodes)
+    log(f"SQL Test {'PASSED 🎉' if sql_ok else 'FAILED ❌'}", SUCCESS if sql_ok else FAIL)
 
-    skip_list = args.skip or []
-    if os.getenv("SKIP_SQL"):
-        skip_list.append("sql")
-    if os.getenv("SKIP_NOSQL"):
-        skip_list.append("nosql")
-    if os.getenv("SKIP_DISCONNECT"):
-        skip_list.append("disconnect")
+    # --- NoSQL Replication Test ---
+    log("-" * 80, WARN)
+    log("🔧  Starting NoSQL Replication Test", INFO)
+    nosql_ok = nosql_test(nodes)
+    log(f"NoSQL Test {'PASSED 🎉' if nosql_ok else 'FAILED ❌'}", SUCCESS if nosql_ok else FAIL)
 
-    all_passed = run_tests(test_functions, nodes, skip_list)
+    # --- Disconnect/Reconnect Test ---
+    log("-" * 80, WARN)
+    log("🔌  Starting Disconnect/Reconnect Test", INFO)
+    disconnect_ok = disconnect_reconnect_test(nodes)
+    log(f"Disconnect/Reconnect Test {'PASSED 🎉' if disconnect_ok else 'FAILED ❌'}",
+        SUCCESS if disconnect_ok else FAIL)
 
-    if all_passed:
-        log("[MAIN] ALL REPLICATION TESTS PASSED 🎉")
+    # --- Network-Limit Test ---
+    log("-" * 80, WARN)
+    log("🌐  Starting Network-Limit Test", INFO)
+    network_ok = network_limit_test(nodes)
+    log(f"Network-Limit Test {'PASSED 🎉' if network_ok else 'FAILED ❌'}",
+        SUCCESS if network_ok else FAIL)
+
+    # --- Summary ---
+    log("=" * 80, INFO)
+    all_ok = all([sql_ok, nosql_ok, disconnect_ok, network_ok])
+    if all_ok:
+        log("ALL REPLICATION TESTS PASSED 🎉", SUCCESS)
         sys.exit(0)
 
-    log("[MAIN] ONE OR MORE TESTS FAILED ❌")
+    log("ONE OR MORE TESTS FAILED ❌", FAIL)
     sys.exit(1)
-
 
 if __name__ == "__main__":
     main()

@@ -1,16 +1,21 @@
 # File: cassandra_utils/logger.py
 """
-Simple incremental logger for numbered messages.
+Simple incremental logger that accepts a level parameter.
 """
-# pylint: disable=global-statement
-STEP = {"n": 0}
+from typing import Literal
+from colors import INFO, SUCCESS, FAIL, WARN, RESET
 
+LogLevel = Literal[INFO, SUCCESS, FAIL, WARN]
 
-def log(msg: str) -> None:
+# Internal counter
+_STEP = {"n": 0}
+
+def log(message: str, level: str = INFO) -> None:
     """
-    Print a numbered log message to stdout and increment the counter.
+    Print a numbered, colored log message.
 
-    :param msg: Message to log.
+    :param message: The text to log (emojis OK, no colors embedded).
+    :param level:   Color/level constant (INFO, SUCCESS, FAIL, WARN).
     """
-    STEP["n"] += 1
-    print(f"[{STEP['n']:02}] {msg}", flush=True)
+    _STEP["n"] += 1
+    print(f"{level}[{_STEP['n']:02}] {message}{RESET}", flush=True)
