@@ -116,4 +116,10 @@ Want to keep data? Use **stop** instead:
 podman compose stop             # containers halted, volumes preserved
 ```
 
+## Roadmap
+
+* Experiment with sharding
+* Conduct more network constraining tests
+* Make database access through a singleton?
+
 Happy experimenting! 🎉

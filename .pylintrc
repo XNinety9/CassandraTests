@@ -1,0 +1,25 @@
+# .pylintrc
+
+[MASTER]
+# Add any directories you want pylint to ignore here
+ignore=build,dist,__pycache__,.venv,.mypy_cache
+
+[MESSAGES CONTROL]
+# Disable any messages you find too noisy; for example:
+# disable=C0114,C0115,C0116  ; missing-module-docstring, missing-class-docstring, missing-function-docstring
+
+[FORMAT]
+# Maximum number of characters on a single line.
+max-line-length=160
+
+# String used as indentation unit. For 4-space indents:
+indent-string='    '
+
+[TYPECHECK]
+# If you have C extensions or namespace packages, list them here
+ignored-modules=
+ignored-classes=
+
+[REPORTS]
+# Set to no to only get the messages
+reports=no

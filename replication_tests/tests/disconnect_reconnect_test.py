@@ -14,6 +14,7 @@ from cassandra_utils.driver import make_session
 from cassandra_utils.logger import log
 from colors import INFO, SUCCESS, FAIL, WARN, RESET
 
+
 def _get_container_id_for_port(port: int) -> Optional[str]:
     """
     Return the Podman container ID exposing the given host port, or None if not found.
@@ -31,16 +32,14 @@ def _get_container_id_for_port(port: int) -> Optional[str]:
                 return cont.get("Id")
     return None
 
+
 def disconnect_reconnect_test(nodes: List[Tuple[str, int]]) -> bool:
     """
     Pause a random Cassandra node, write data elsewhere, then unpause and verify replication.
     """
     idx = random.randrange(len(nodes))
     host_to_pause, port_to_pause = nodes[idx]
-    log(
-        f"Selected node for pause: {INFO}{host_to_pause}:{port_to_pause}{RESET}",
-        RESET
-    )
+    log(f"Selected node for pause: {INFO}{host_to_pause}:{port_to_pause}{RESET}", RESET)
 
     container_id = _get_container_id_for_port(port_to_pause)
     if not container_id:
@@ -49,26 +48,29 @@ def disconnect_reconnect_test(nodes: List[Tuple[str, int]]) -> bool:
     log(f"Pausing container {INFO}{container_id}{RESET}", RESET)
     subprocess.run(["podman", "pause", container_id], check=True)
 
-    writer_host, writer_port = random.choice([n for n in nodes if n[1] != port_to_pause])
-    log(
-        f"Writer node: {INFO}{writer_host}:{writer_port}{RESET}",
-        RESET
+    writer_host, writer_port = random.choice(
+        [n for n in nodes if n[1] != port_to_pause]
     )
+    log(f"Writer node: {INFO}{writer_host}:{writer_port}{RESET}", RESET)
     writer_session = make_session(writer_host, writer_port)
 
     keyspace = "disconnect_test"
     try:
-        writer_session.execute(f"""
+        writer_session.execute(
+            f"""
             CREATE KEYSPACE IF NOT EXISTS {keyspace}
             WITH replication = {{'class':'SimpleStrategy','replication_factor':{len(nodes)}}}
-        """)
+        """
+        )
     except OperationTimedOut:
         log("Timeout creating keyspace; retrying once...", WARN)
         try:
-            writer_session.execute(f"""
+            writer_session.execute(
+                f"""
                 CREATE KEYSPACE IF NOT EXISTS {keyspace}
                 WITH replication = {{'class':'SimpleStrategy','replication_factor':{len(nodes)}}}
-            """)
+            """
+            )
         except OperationTimedOut:
             log("Failed to create keyspace after retry", FAIL)
             writer_session.cluster.shutdown()
@@ -94,7 +96,7 @@ def disconnect_reconnect_test(nodes: List[Tuple[str, int]]) -> bool:
     log(
         f"Writing id={INFO}{test_id}{RESET} value={INFO}{test_value}{RESET} "
         f"on {INFO}{writer_host}:{writer_port}{RESET}",
-        RESET
+        RESET,
     )
     prepared = writer_session.prepare("INSERT INTO kv (id, value) VALUES (?, ?)")
     for attempt in range(2):
@@ -128,11 +130,11 @@ def disconnect_reconnect_test(nodes: List[Tuple[str, int]]) -> bool:
     if not row or row.value != test_value:
         log(
             f"Mismatch after reconnect on {INFO}{host_to_pause}:{port_to_pause}{RESET}",
-            FAIL
+            FAIL,
         )
         return False
     log(
         f"Reconnect test passed on {INFO}{host_to_pause}:{port_to_pause}{RESET}",
-        SUCCESS
+        SUCCESS,
     )
     return True
