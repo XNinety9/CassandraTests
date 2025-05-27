@@ -3,14 +3,14 @@
 Simple incremental logger that accepts a level parameter.
 """
 from typing import Literal
-from colors import INFO, SUCCESS, FAIL, WARN, RESET
+from colors import INFO, SUCCESS, FAIL, WARN, RESET, SEPARATOR
 
-LogLevel = Literal[INFO, SUCCESS, FAIL, WARN]
+LogLevel = Literal[INFO, SUCCESS, FAIL, WARN, SEPARATOR]
 
 # Internal counter
 _STEP = {"n": 0}
 
-def log(message: str, level: str = INFO) -> None:
+def log(message: str, level: str = INFO, extra_newline: bool = False) -> None:
     """
     Print a numbered, colored log message.
 
@@ -18,4 +18,5 @@ def log(message: str, level: str = INFO) -> None:
     :param level:   Color/level constant (INFO, SUCCESS, FAIL, WARN).
     """
     _STEP["n"] += 1
-    print(f"{level}[{_STEP['n']:02}] {message}{RESET}", flush=True)
+    newline = "\n" if extra_newline is True else ""
+    print(f"{newline}{level}[{_STEP['n']:02}] {message}{RESET}", flush=True)

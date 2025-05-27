@@ -14,3 +14,5 @@ INFO = Fore.CYAN + Style.BRIGHT
 WARN = Fore.YELLOW + Style.BRIGHT
 # Reset to default terminal style
 RESET = Style.RESET_ALL
+# Seperator style
+SEPARATOR = Style.RESET_ALL
